@@ -2,7 +2,9 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 import redis
+import boto3
 import os
+from botocore.config import Config
 
 app = FastAPI(title="Task Manager API", version="1.0.0")
 
@@ -10,6 +12,15 @@ redis_client = redis.Redis(
     host=os.getenv("REDIS_HOST", "localhost"),
     port=int(os.getenv("REDIS_PORT", 6379)),
     decode_responses=True
+)
+
+s3_client = boto3.client(
+    "s3",
+    endpoint_url=os.getenv("AWS_ENDPOINT_URL", "http://localhost:4566"),
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "test"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "test"),
+    region_name="us-east-1",
+    config=Config(signature_version="s3v4")
 )
 
 tasks = {}
@@ -56,3 +67,15 @@ def delete_task(task_id: int):
     redis_client.delete(f"task:{task_id}")
     del tasks[task_id]
     return {"message": "Task deleted"}
+
+
+@app.post("/tasks/{task_id}/upload")
+def upload_file(task_id: int, filename: str, content: str):
+    if task_id not in tasks:
+        raise HTTPException(status_code=404, detail="Task not found")
+    s3_client.put_object(
+        Bucket="devops-bucket",
+        Key=f"tasks/{task_id}/{filename}",
+        Body=content.encode()
+    )
+    return {"message": f"File uploaded to s3://devops-bucket/tasks/{task_id}/{filename}"}

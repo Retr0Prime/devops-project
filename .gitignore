@@ -2,3 +2,12 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+
+# AWS CLI installer
+aws/
+awscliv2.zip
